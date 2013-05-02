@@ -50,6 +50,7 @@ import logging.handlers
 import fcntl
 import socket 
 import traceback
+import pkg_resources
 
 from time import time, strftime, gmtime
 from math import floor
@@ -128,9 +129,6 @@ if 'nsca' in options.output and not options.nsca_host:
     cmdline.error("You must supply --nsca-host when using 'nsca' as an output type.")
 
 class_name = arguments[0]
-if class_name.find('.') == -1:
-    # If it's a single name, find it in the base logster package
-    class_name = 'logster.parsers.%s.%s' % (class_name, class_name)
 log_file   = arguments[1]
 state_dir  = options.state_dir
 logtail    = options.logtail
@@ -327,9 +325,21 @@ def main():
     logger.debug("Using state file %s" % logtail_state_file)
 
     # Import and instantiate the class from the module passed in.
-    module_name, parser_name = class_name.rsplit('.', 1)
-    module = __import__(module_name, globals(), locals(), [parser_name])
-    parser = getattr(module, parser_name)(option_string=options.parser_options)
+    parser = None
+
+    if class_name.find('.') != -1:
+        module_name, parser_name = class_name.rsplit('.', 1)
+        module = __import__(module_name, globals(), locals(), [parser_name])
+        parser = getattr(module, parser_name)(option_string=options.parser_options)
+    else:
+        for entrypoint in pkg_resources.iter_entry_points("logster.parsers"):
+            if entrypoint.name == class_name:
+                parser_cls = entrypoint.load()
+                parser = parser_cls(option_string=options.parser_options)
+                break
+
+    if parser is None:
+        raise Exception('Invalid Parser')
 
     # Check for lock file so we don't run multiple copies of the same parser 
     # simultaneuosly. This will happen if the log parsing takes more time than
