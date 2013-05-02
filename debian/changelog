@@ -1,3 +1,9 @@
+logster (0.0.1+moniker1) precise; urgency=high
+
+  * Added python-pkg-resources dep
+
+ -- Kiall Mac Innes <kiall@hp.com>  Thu, 02 May 2013 15:02:36 +0100
+
 logster (0.0.1) precise; urgency=low
 
   * Initial Packaging
